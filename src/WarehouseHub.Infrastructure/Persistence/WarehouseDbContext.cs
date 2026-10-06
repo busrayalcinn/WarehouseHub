@@ -1,9 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using WarehouseHub.Application.Common.Interfaces;
 using WarehouseHub.Domain.Entities;
 
 namespace WarehouseHub.Infrastructure.Persistence;
 
-public class WarehouseDbContext : DbContext
+public class WarehouseDbContext : DbContext, IApplicationDbContext
 {
     public WarehouseDbContext(DbContextOptions<WarehouseDbContext> options) : base(options) { }
 

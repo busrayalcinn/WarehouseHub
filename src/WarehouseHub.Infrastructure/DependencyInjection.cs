@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using WarehouseHub.Application.Common.Interfaces;
 using WarehouseHub.Infrastructure.Persistence;
 
 namespace WarehouseHub.Infrastructure;
@@ -13,6 +14,7 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException("Connection string 'WarehouseDb' is missing.");
 
         services.AddDbContext<WarehouseDbContext>(options => options.UseSqlServer(connectionString));
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<WarehouseDbContext>());
 
         return services;
     }
