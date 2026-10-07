@@ -2,12 +2,14 @@
 using Microsoft.EntityFrameworkCore;
 using WarehouseHub.Application.Common.Exceptions;
 using WarehouseHub.Application.Common.Interfaces;
+using WarehouseHub.Application.Products;
 
 namespace WarehouseHub.Application.Orders.Commands;
 
 public record ConfirmOrderCommand(Guid OrderId) : IRequest;
 
-public class ConfirmOrderCommandHandler(IApplicationDbContext db) : IRequestHandler<ConfirmOrderCommand>
+public class ConfirmOrderCommandHandler(IApplicationDbContext db, ICacheService cache)
+    : IRequestHandler<ConfirmOrderCommand>
 {
     public async Task Handle(ConfirmOrderCommand request, CancellationToken cancellationToken)
     {
@@ -19,7 +21,7 @@ public class ConfirmOrderCommandHandler(IApplicationDbContext db) : IRequestHand
         // Checks that the order is pending and has items before touching any stock
         order.Confirm();
 
-        var productIds = order.Items.Select(i => i.ProductId).ToList();
+        var productIds = order.Items.Select(i => i.ProductId).Distinct().ToList();
         var products = await db.Products
             .Where(p => productIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id, cancellationToken);
@@ -30,5 +32,8 @@ public class ConfirmOrderCommandHandler(IApplicationDbContext db) : IRequestHand
 
         // One SaveChanges call: order status and all stock changes are committed together
         await db.SaveChangesAsync(cancellationToken);
+
+        // Invalidate only after the database commit succeeded
+        await cache.RemoveAsync(ProductCacheKeys.ForProducts(productIds), cancellationToken);
     }
 }

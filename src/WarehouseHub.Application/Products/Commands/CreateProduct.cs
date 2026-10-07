@@ -8,7 +8,8 @@ namespace WarehouseHub.Application.Products.Commands;
 
 public record CreateProductCommand(string Sku, string Name, decimal UnitPrice, int InitialStock) : IRequest<Guid>;
 
-public class CreateProductCommandHandler(IApplicationDbContext db) : IRequestHandler<CreateProductCommand, Guid>
+public class CreateProductCommandHandler(IApplicationDbContext db, ICacheService cache)
+    : IRequestHandler<CreateProductCommand, Guid>
 {
     public async Task<Guid> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
@@ -20,6 +21,9 @@ public class CreateProductCommandHandler(IApplicationDbContext db) : IRequestHan
 
         db.Products.Add(product);
         await db.SaveChangesAsync(cancellationToken);
+
+        // The cached list no longer includes the new product
+        await cache.RemoveAsync([ProductCacheKeys.All], cancellationToken);
 
         return product.Id;
     }
