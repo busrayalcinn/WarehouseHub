@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\WarehouseHub.Application\WarehouseHub.Application.csproj" />
+    <ProjectReference Include="..\WarehouseHub.Messaging\WarehouseHub.Messaging.csproj" />
   </ItemGroup>
 
   <ItemGroup>

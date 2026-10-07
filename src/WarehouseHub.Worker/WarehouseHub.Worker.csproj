@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-WarehouseHub.Worker-30265725-9fe9-43a0-ad87-5da093a2a596</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WarehouseHub.Messaging\WarehouseHub.Messaging.csproj" />
+    <ProjectReference Include="..\WarehouseHub.Contracts\WarehouseHub.Contracts.csproj" />
+  </ItemGroup>
+</Project>

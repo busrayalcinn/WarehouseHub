@@ -1,15 +1,20 @@
 ﻿using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using WarehouseHub.Application.Common.Exceptions;
 using WarehouseHub.Application.Common.Interfaces;
 using WarehouseHub.Application.Products;
+using WarehouseHub.Contracts;
 
 namespace WarehouseHub.Application.Orders.Commands;
 
 public record ConfirmOrderCommand(Guid OrderId) : IRequest;
 
-public class ConfirmOrderCommandHandler(IApplicationDbContext db, ICacheService cache)
-    : IRequestHandler<ConfirmOrderCommand>
+public class ConfirmOrderCommandHandler(
+    IApplicationDbContext db,
+    ICacheService cache,
+    IEventPublisher publisher,
+    ILogger<ConfirmOrderCommandHandler> logger) : IRequestHandler<ConfirmOrderCommand>
 {
     public async Task Handle(ConfirmOrderCommand request, CancellationToken cancellationToken)
     {
@@ -35,5 +40,22 @@ public class ConfirmOrderCommandHandler(IApplicationDbContext db, ICacheService 
 
         // Invalidate only after the database commit succeeded
         await cache.RemoveAsync(ProductCacheKeys.ForProducts(productIds), cancellationToken);
+
+        var orderConfirmed = new OrderConfirmedEvent(
+            order.Id,
+            order.CustomerName,
+            DateTime.UtcNow,
+            order.Items.Select(i => new OrderConfirmedItem(i.ProductId, i.Quantity)).ToList());
+
+        // Known gap: if publishing fails after the commit, this event is lost.
+        // The transactional outbox pattern closes this gap.
+        try
+        {
+            await publisher.PublishOrderConfirmedAsync(orderConfirmed, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Order {OrderId} was confirmed but its event could not be published.", order.Id);
+        }
     }
 }
