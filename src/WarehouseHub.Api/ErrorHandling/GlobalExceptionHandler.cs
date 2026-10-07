@@ -13,6 +13,7 @@ public class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IE
         var (statusCode, title) = exception switch
         {
             DomainException => (StatusCodes.Status400BadRequest, "Business rule violation"),
+            RequestValidationException => (StatusCodes.Status400BadRequest, "Validation failed"),
             NotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
             ConflictException => (StatusCodes.Status409Conflict, "Conflict"),
             DbUpdateConcurrencyException => (StatusCodes.Status409Conflict, "The resource was modified by another request. Please retry."),
