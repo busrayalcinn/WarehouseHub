@@ -58,41 +58,41 @@ Dependencies point inward: the Domain knows nothing about the database, and the 
 
 ## Tech stack
 
-.NET 10 · ASP.NET Core · EF Core 10 · SQL Server 2022 · Redis · RabbitMQ 4 · MediatR · Docker Compose · Scalar (OpenAPI UI)
+.NET 10 · ASP.NET Core · EF Core 10 · SQL Server 2022 · Redis · RabbitMQ 4 · MediatR · xUnit · Docker · Docker Compose · Scalar (OpenAPI UI)
 
 ## Getting started
 
-### Prerequisites
+### Run everything with Docker
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- EF Core CLI: `dotnet tool install --global dotnet-ef`
-
-### Run
+The only requirement is [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 
 ```bash
 git clone https://github.com/busrayalcinn/WarehouseHub.git
 cd WarehouseHub
-
-# Start SQL Server, Redis and RabbitMQ
-docker compose up -d
-
-# Create the database (wait ~30 seconds for SQL Server to start first)
-dotnet ef database update -p src/WarehouseHub.Infrastructure -s src/WarehouseHub.Api
-
-# Run the API
-dotnet run --project src/WarehouseHub.Api
-
-# In a second terminal, run the worker
-dotnet run --project src/WarehouseHub.Worker
+docker compose up -d --build
 ```
+
+This starts SQL Server, Redis, RabbitMQ, the API and the worker. Containers wait for their dependencies to pass health checks, and the API applies database migrations on startup, so no manual setup is needed.
 
 | What | URL |
 | --- | --- |
-| API reference (Scalar) | http://localhost:5116/scalar |
-| RabbitMQ management | http://localhost:15672 (`guest` / `guest`) |
+| API reference (Scalar) | http://localhost:8080/scalar |
+| RabbitMQ management | http://localhost:15672 (`warehouse` / `Warehouse_Passw0rd!`) |
 
-> **Note:** The credentials in `docker-compose.yml` and `appsettings.Development.json` are local development defaults. In production they must come from environment variables or a secret store.
+Follow the worker's output with `docker compose logs -f worker`. Stop everything with `docker compose down` (add `-v` to also delete the data).
+
+### Run locally for development
+
+Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download). Start only the infrastructure in Docker and run the services from source:
+
+```bash
+docker compose up -d sqlserver redis rabbitmq
+dotnet run --project src/WarehouseHub.Api      # http://localhost:5116/scalar
+dotnet run --project src/WarehouseHub.Worker   # in a second terminal
+dotnet test                                    # run the unit tests
+```
+
+> **Note:** The credentials in `docker-compose.yml` and the `appsettings` files are local development defaults. In production they must come from environment variables or a secret store.
 
 ## API
 
@@ -112,17 +112,17 @@ dotnet run --project src/WarehouseHub.Worker
 
 ```bash
 # Create a product
-curl -X POST http://localhost:5116/api/products \
+curl -X POST http://localhost:8080/api/products \
   -H "Content-Type: application/json" \
   -d '{ "sku": "kb-001", "name": "Mechanical Keyboard", "unitPrice": 1499.90, "initialStock": 25 }'
 
 # Create an order (use the product id from the previous response)
-curl -X POST http://localhost:5116/api/orders \
+curl -X POST http://localhost:8080/api/orders \
   -H "Content-Type: application/json" \
   -d '{ "customerName": "Ayse Demir", "items": [ { "productId": "<product-id>", "quantity": 3 } ] }'
 
 # Confirm it: stock drops from 25 to 22 and the worker logs the shipment
-curl -X POST http://localhost:5116/api/orders/<order-id>/confirm
+curl -X POST http://localhost:8080/api/orders/<order-id>/confirm
 ```
 
 To see the retry and dead letter flow, create and confirm an order whose `customerName` contains `fail`. The worker simulates a processing error, retries three times at 5 second intervals, then moves the message to `order-confirmed.dlq`, visible in the RabbitMQ management UI.
@@ -137,10 +137,11 @@ To see the retry and dead letter flow, create and confirm an order whose `custom
 
 ## Roadmap
 
-- [ ] Unit tests with xUnit for domain rules and handlers
+- [x] Unit tests with xUnit for domain rules and handlers
+- [x] Containerize the API and worker so the whole system starts with `docker compose up`
 - [ ] Transactional outbox to guarantee event delivery
 - [ ] Idempotent consumer using the message id
-- [ ] Containerize the API and worker so the whole system starts with `docker compose up`
+- [ ] Integration tests against a real SQL Server with Testcontainers
 - [ ] CI pipeline with GitHub Actions
 
 ## Author
